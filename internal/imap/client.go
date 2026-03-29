@@ -211,22 +211,46 @@ func (c *Client) ListMessages(mailbox string, limit, offset int, unreadOnly bool
 		return []MessageSummary{}, nil
 	}
 
-	// Calculate the range of messages to fetch (most recent first, with offset)
-	// offset=0: get the last `limit` messages
-	// offset=20: skip the 20 most recent, get the next `limit`
-	total := int(status.Messages)
-	end := total - offset
-	if end <= 0 {
-		return []MessageSummary{}, nil
-	}
-	start := end - limit + 1
-	if start < 1 {
-		start = 1
-	}
-
-	// Build sequence set for range
 	var seqSet imap.SeqSet
-	seqSet.AddRange(uint32(start), uint32(end))
+
+	if unreadOnly {
+		// Use SEARCH UNSEEN so we find unread messages anywhere in the mailbox,
+		// not just within the most-recent N by sequence number.
+		searchCmd := c.client.Search(&imap.SearchCriteria{NotFlag: []imap.Flag{imap.FlagSeen}}, nil)
+		searchData, err := searchCmd.Wait()
+		if err != nil {
+			return nil, fmt.Errorf("search unseen failed: %w", err)
+		}
+		seqNums := searchData.AllSeqNums()
+		if len(seqNums) == 0 {
+			return []MessageSummary{}, nil
+		}
+		// Apply offset+limit to the tail (newest) of the results.
+		// seqNums are ascending; we want the most recent ones.
+		if offset < len(seqNums) {
+			seqNums = seqNums[:len(seqNums)-offset]
+		} else {
+			return []MessageSummary{}, nil
+		}
+		if len(seqNums) > limit {
+			seqNums = seqNums[len(seqNums)-limit:]
+		}
+		seqSet = imap.SeqSetNum(seqNums...)
+	} else {
+		// Calculate the range of messages to fetch (most recent first, with offset)
+		// offset=0: get the last `limit` messages
+		// offset=20: skip the 20 most recent, get the next `limit`
+		total := int(status.Messages)
+		end := total - offset
+		if end <= 0 {
+			return []MessageSummary{}, nil
+		}
+		start := end - limit + 1
+		if start < 1 {
+			start = 1
+		}
+		seqSet.AddRange(uint32(start), uint32(end))
+	}
 
 	// Fetch options
 	fetchOptions := &imap.FetchOptions{
@@ -236,6 +260,7 @@ func (c *Client) ListMessages(mailbox string, limit, offset int, unreadOnly bool
 		InternalDate: true,
 		BodySection: []*imap.FetchItemBodySection{
 			{
+				Peek:         true,
 				Specifier:    imap.PartSpecifierHeader,
 				HeaderFields: []string{"List-Unsubscribe"},
 			},
@@ -297,10 +322,6 @@ func (c *Client) ListMessages(mailbox string, limit, offset int, unreadOnly bool
 			if f == imap.FlagFlagged {
 				flagged = true
 			}
-		}
-
-		if unreadOnly && seen {
-			continue
 		}
 
 		from := ""
