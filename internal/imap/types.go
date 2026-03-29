@@ -14,34 +14,36 @@ type MailboxStatus struct {
 }
 
 type MessageSummary struct {
-	UID     uint32 `json:"uid"`
-	SeqNum  uint32 `json:"seq_num"`
-	From    string `json:"from"`
-	Subject string `json:"subject"`
-	Date    string `json:"date"`
-	DateISO string `json:"date_iso,omitempty"`
-	Seen    bool   `json:"seen"`
-	Flagged bool   `json:"flagged"`
+	UID            uint32 `json:"uid"`
+	SeqNum         uint32 `json:"seq_num"`
+	From           string `json:"from"`
+	Subject        string `json:"subject"`
+	Date           string `json:"date"`
+	DateISO        string `json:"date_iso,omitempty"`
+	Seen           bool   `json:"seen"`
+	Flagged        bool   `json:"flagged"`
+	ListUnsubscribe string `json:"list_unsubscribe,omitempty"`
 }
 
 type Message struct {
-	UID         uint32       `json:"uid"`
-	SeqNum      uint32       `json:"seq_num"`
-	MessageID   string       `json:"message_id,omitempty"`
-	InReplyTo   string       `json:"in_reply_to,omitempty"`
-	References  []string     `json:"references,omitempty"`
-	From        string       `json:"from"`
-	To          []string     `json:"to"`
-	CC          []string     `json:"cc,omitempty"`
-	Subject     string       `json:"subject"`
-	Date        string       `json:"date"`
-	DateISO     string       `json:"date_iso,omitempty"`
-	Flags       []string     `json:"flags"`
-	Labels      []string     `json:"labels,omitempty"`
-	TextBody    string       `json:"text_body,omitempty"`
-	HTMLBody    string       `json:"html_body,omitempty"`
-	RawBody     []byte       `json:"-"`
-	Attachments []Attachment `json:"attachments,omitempty"`
+	UID             uint32       `json:"uid"`
+	SeqNum          uint32       `json:"seq_num"`
+	MessageID       string       `json:"message_id,omitempty"`
+	InReplyTo       string       `json:"in_reply_to,omitempty"`
+	References      []string     `json:"references,omitempty"`
+	From            string       `json:"from"`
+	To              []string     `json:"to"`
+	CC              []string     `json:"cc,omitempty"`
+	Subject         string       `json:"subject"`
+	Date            string       `json:"date"`
+	DateISO         string       `json:"date_iso,omitempty"`
+	Flags           []string     `json:"flags"`
+	Labels          []string     `json:"labels,omitempty"`
+	ListUnsubscribe string       `json:"list_unsubscribe,omitempty"`
+	TextBody        string       `json:"text_body,omitempty"`
+	HTMLBody        string       `json:"html_body,omitempty"`
+	RawBody         []byte       `json:"-"`
+	Attachments     []Attachment `json:"attachments,omitempty"`
 }
 
 type Attachment struct {

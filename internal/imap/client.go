@@ -234,6 +234,12 @@ func (c *Client) ListMessages(mailbox string, limit, offset int, unreadOnly bool
 		Flags:        true,
 		Envelope:     true,
 		InternalDate: true,
+		BodySection: []*imap.FetchItemBodySection{
+			{
+				Specifier:    imap.PartSpecifierHeader,
+				HeaderFields: []string{"List-Unsubscribe"},
+			},
+		},
 	}
 
 	fetchCmd := c.client.Fetch(seqSet, fetchOptions)
@@ -252,6 +258,7 @@ func (c *Client) ListMessages(mailbox string, limit, offset int, unreadOnly bool
 		var uid imap.UID
 		var date string
 		var dateISO string
+		var listUnsubscribe string
 
 		for {
 			item := msg.Next()
@@ -269,6 +276,10 @@ func (c *Client) ListMessages(mailbox string, limit, offset int, unreadOnly bool
 			case imapclient.FetchItemDataInternalDate:
 				date = data.Time.Format("2006-01-02 15:04")
 				dateISO = data.Time.Format(time.RFC3339)
+			case imapclient.FetchItemDataBodySection:
+				if raw, err := readAll(data.Literal); err == nil {
+					listUnsubscribe = extractHeader(raw, "List-Unsubscribe")
+				}
 			}
 		}
 
@@ -303,14 +314,15 @@ func (c *Client) ListMessages(mailbox string, limit, offset int, unreadOnly bool
 		}
 
 		summary := MessageSummary{
-			UID:     uint32(uid),
-			SeqNum:  msg.SeqNum,
-			From:    from,
-			Subject: envelope.Subject,
-			Date:    date,
-			DateISO: dateISO,
-			Seen:    seen,
-			Flagged: flagged,
+			UID:             uint32(uid),
+			SeqNum:          msg.SeqNum,
+			From:            from,
+			Subject:         envelope.Subject,
+			Date:            date,
+			DateISO:         dateISO,
+			Seen:            seen,
+			Flagged:         flagged,
+			ListUnsubscribe: listUnsubscribe,
 		}
 
 		messages = append(messages, summary)
@@ -401,6 +413,7 @@ func (c *Client) GetMessage(mailbox string, id string) (*Message, error) {
 			body, err := readAll(data.Literal)
 			if err == nil {
 				result.RawBody = body
+				result.ListUnsubscribe = extractHeader(body, "List-Unsubscribe")
 			}
 		}
 	}
@@ -1475,6 +1488,18 @@ func sortThreadByDate(thread []ThreadMessage) {
 			}
 		}
 	}
+}
+
+// extractHeader parses a raw IMAP header block and returns the value of the
+// named header field, or an empty string if not present.
+func extractHeader(raw []byte, name string) string {
+	prefix := strings.ToLower(name) + ":"
+	for _, line := range strings.Split(string(raw), "\n") {
+		if strings.HasPrefix(strings.ToLower(line), prefix) {
+			return strings.TrimSpace(line[len(prefix):])
+		}
+	}
+	return ""
 }
 
 func extractBodyText(raw []byte) string {
