@@ -326,12 +326,7 @@ func (c *Client) ListMessages(mailbox string, limit, offset int, unreadOnly bool
 
 		from := ""
 		if len(envelope.From) > 0 {
-			addr := envelope.From[0]
-			if addr.Name != "" {
-				from = addr.Name
-			} else {
-				from = addr.Addr()
-			}
+			from = formatAddress(envelope.From[0])
 		}
 
 		summary := MessageSummary{
